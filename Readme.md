@@ -1,5 +1,4 @@
-[![Release](https://jitpack.io/v/mrosseel/bisq-api.svg)]
-(https://jitpack.io/#mrosseel/bisq-api)
+[![Release](https://jitpack.io/v/mrosseel/bisq-api.svg)](https://jitpack.io/#mrosseel/bisq-api)
 
 # Bisq API
 
