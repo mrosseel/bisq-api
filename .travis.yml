@@ -20,6 +20,6 @@ jobs:
     - stage: test
       script: "mvn clean install -Dmaven.javadoc.skip=true -B -V"
     - stage: integration
-      script: "docker-compose build"
-    -
-      script: "mvn verify -P integration"
+      script:
+        docker-compose build;
+        mvn verify -P integration
