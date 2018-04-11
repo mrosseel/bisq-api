@@ -1,6 +1,9 @@
 package io.bisq.api;
 
 import com.google.inject.Inject;
+import io.bisq.api.exceptions.IncompatiblePaymentAccountException;
+import io.bisq.api.exceptions.NoAcceptedArbitratorException;
+import io.bisq.api.exceptions.PaymentAccountNotFoundException;
 import io.bisq.api.model.Market;
 import bisq.common.app.Version;
 import bisq.common.crypto.KeyRing;

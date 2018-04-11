@@ -1,4 +1,4 @@
-package io.bisq.api;
+package io.bisq.api.exceptions;
 
 public class AmountTooLowException extends Exception {
     public AmountTooLowException(String message) {

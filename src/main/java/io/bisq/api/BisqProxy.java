@@ -2,6 +2,7 @@ package io.bisq.api;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.inject.Injector;
+import io.bisq.api.exceptions.*;
 import io.bisq.api.model.*;
 import io.bisq.api.model.payment.PaymentAccountHelper;
 import bisq.common.app.DevEnv;
@@ -49,6 +50,7 @@ import javax.annotation.Nullable;
 import javax.validation.ValidationException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -249,7 +251,7 @@ public class BisqProxy {
                 transaction -> futureResult.complete(offer),
                 error -> {
                     if (error.contains("Insufficient money")) {
-                        futureResult.completeExceptionally(new InsufficientMoneyException(error));
+                        futureResult.completeExceptionally(new io.bisq.api.exceptions.InsufficientMoneyException(error));
                     } else
                         futureResult.completeExceptionally(new RuntimeException(error));
                 });
@@ -293,7 +295,7 @@ public class BisqProxy {
         // workaround because TradeTask does not have an error handler to notify us that something went wrong
         if (btcWalletService.getAvailableBalance().isLessThan(coinAmount)) {
             final String errorMessage = "Available balance " + btcWalletService.getAvailableBalance() + " is less than needed amount: " + coinAmount;
-            return failFuture(futureResult, new InsufficientMoneyException(errorMessage));
+            return failFuture(futureResult, new io.bisq.api.exceptions.InsufficientMoneyException(errorMessage));
         }
 
         // check that the price is correct ??
@@ -517,7 +519,24 @@ public class BisqProxy {
         return walletAddressList;
     }
 
-    public void withdrawFunds(Set<String> sourceAddresses, Coin amountAsCoin, boolean feeExcluded, String targetAddress) throws AddressEntryException, InsufficientFundsException, AmountTooLowException {
+    public void withdrawFunds(Set<String> sourceAddresses, Coin amountAsCoin, boolean feeExcluded, String targetAddress)
+            throws AddressEntryException, InsufficientFundsException, AmountTooLowException {
+        // get all address entries
+        final Stream<AddressEntry> addressEntryStream = sourceAddresses.stream()
+                .filter(address -> null != address)
+                .map(address -> btcWalletService.getAddressEntryListAsImmutableList().stream().filter(addressEntry -> address.equals(addressEntry.getAddressString())).findFirst().orElse(null))
+                .filter(item -> null != item);
+        // this filter matches all unauthorized address types
+        Predicate<AddressEntry> filterNotAllowedAddressEntries = addressEntry -> {
+            return !(AddressEntry.Context.AVAILABLE.equals(addressEntry.getContext())
+                    || AddressEntry.Context.TRADE_PAYOUT.equals(addressEntry.getContext()));
+        };
+        // check if there are any unauthorized address types
+        if (addressEntryStream.anyMatch(filterNotAllowedAddressEntries)) {
+            throw new AddressEntryException("Only addresses with context AVAILABLE and TRADE_PAYOUT can be used:"
+                    + addressEntryStream.filter(filterNotAllowedAddressEntries).map(addressEntry -> addressEntry.getAddressString()).collect(Collectors.joining(", ")));
+        }
+
         Coin sendersAmount;
         // We do not know sendersAmount if senderPaysFee is true. We repeat fee calculation after first attempt if senderPaysFee is true.
         Transaction feeEstimationTransaction;
@@ -538,10 +557,7 @@ public class BisqProxy {
         sendersAmount = feeExcluded ? amountAsCoin.add(fee) : amountAsCoin;
         Coin receiverAmount = feeExcluded ? amountAsCoin : amountAsCoin.subtract(fee);
 
-        final Coin totalAvailableAmountOfSelectedItems = sourceAddresses.stream()
-                .filter(address -> null != address)
-                .map(address -> btcWalletService.getAddressEntryListAsImmutableList().stream().filter(addressEntry -> address.equals(addressEntry.getAddressString())).findFirst().orElse(null))
-                .filter(item -> null != item)
+        final Coin totalAvailableAmountOfSelectedItems = addressEntryStream
                 .map(address -> btcWalletService.getBalanceForAddress(address.getAddress()))
                 .reduce(Coin.ZERO, Coin::add);
 
@@ -587,6 +603,15 @@ public class BisqProxy {
         } else {
             throw new AmountTooLowException(Res.get("portfolio.pending.step5_buyer.amountTooLow"));
         }
+    }
+
+    private Stream<AddressEntry> getReceiveOrSendFundsAddressEntryStream() {
+        return tradeManager.getLockedTradesStream()
+                .map(trade -> {
+                    final Optional<AddressEntry> addressEntryOptional = btcWalletService.getAddressEntry(trade.getId(), AddressEntry.Context.MULTI_SIG);
+                    return addressEntryOptional.isPresent() ? addressEntryOptional.get() : null;
+                })
+                .filter(e -> e != null);
     }
 
     private Stream<AddressEntry> getLockedFundsAddressEntryStream() {
@@ -810,6 +835,7 @@ public class BisqProxy {
             if (!explorerOptional.isPresent()) {
                 throw new ValidationException("Unsupported value of blockChainExplorer: " + update.blockChainExplorer);
             }
+            preferences.setBlockChainExplorer(explorerOptional.get());
             preferences.setBlockChainExplorer(explorerOptional.get());
         }
         if (null != update.cryptoCurrencies) {
