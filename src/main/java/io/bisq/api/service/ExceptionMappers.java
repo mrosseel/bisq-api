@@ -3,8 +3,8 @@ package io.bisq.api.service;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
 import com.google.common.collect.ImmutableList;
-import io.bisq.api.NotFoundException;
-import io.bisq.api.WalletNotReadyException;
+import io.bisq.api.exceptions.NotFoundException;
+import io.bisq.api.exceptions.WalletNotReadyException;
 import io.dropwizard.jersey.setup.JerseyEnvironment;
 import io.dropwizard.jersey.validation.ValidationErrorMessage;
 

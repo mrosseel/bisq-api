@@ -2,7 +2,8 @@ package io.bisq.api.service.v1;
 
 import com.google.common.collect.ImmutableList;
 import io.bisq.api.*;
-import io.bisq.api.NotFoundException;
+import io.bisq.api.exceptions.*;
+import io.bisq.api.exceptions.NotFoundException;
 import io.bisq.api.model.*;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;

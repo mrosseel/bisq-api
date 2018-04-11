@@ -2,7 +2,7 @@ package io.bisq.api.service.v1;
 
 import com.google.common.collect.ImmutableList;
 import io.bisq.api.BisqProxy;
-import io.bisq.api.NotFoundException;
+import io.bisq.api.exceptions.NotFoundException;
 import io.bisq.api.model.TradeDetails;
 import io.bisq.api.model.TradeList;
 import io.dropwizard.jersey.validation.ValidationErrorMessage;

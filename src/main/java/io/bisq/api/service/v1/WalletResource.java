@@ -1,6 +1,6 @@
 package io.bisq.api.service.v1;
 
-import io.bisq.api.AmountTooLowException;
+import io.bisq.api.exceptions.AmountTooLowException;
 import io.bisq.api.BisqProxy;
 import io.bisq.api.model.WalletAddress;
 import io.bisq.api.model.WalletAddressList;
