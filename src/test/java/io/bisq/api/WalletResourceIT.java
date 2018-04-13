@@ -26,10 +26,34 @@ public class WalletResourceIT {
     @DockerContainer
     private Container bitcoin = ContainerFactory.createBitcoinContainer();
 
+    // containers below are needed for trade testing
+    @DockerContainer
+    private Container bob;
+
+    @DockerContainer
+    private Container arbitrator;
+
+    @SuppressWarnings("unused")
+    @DockerContainer
+    private Container seedNode;
+
     private static String emptyMinerAddress;
     private static String addressWithFunds1;
     private static String addressWithFunds2;
     private static String addressWithFunds3;
+
+    private TradeResourceIT tradeResourceIT = new TradeResourceIT();
+
+    private static String tradeId;
+
+    {
+        alice = tradeResourceIT.alice;
+        bob = tradeResourceIT.bob;
+        arbitrator = tradeResourceIT.arbitrator;
+        seedNode = tradeResourceIT.seedNode;
+        bitcoin = tradeResourceIT.bitcoin;
+    }
+
 
     @InSequence
     @Test
@@ -194,6 +218,39 @@ public class WalletResourceIT {
     @InSequence(7)
     @Test
     public void withdrawFunds_sufficientFundsExcludingFee_returns204() throws InterruptedException {
+        final int alicePort = getAlicePort();
+
+        emptyMinerAddress = createNewAccountAndAddress();
+        fundAliceWallet();
+
+        final WithdrawFundsForm data = new WithdrawFundsForm();
+        data.amount = 50000000;
+        data.feeExcluded = true;
+        data.sourceAddresses = Arrays.asList(addressWithFunds1, addressWithFunds2, addressWithFunds3);
+        data.targetAddress = emptyMinerAddress;
+
+        given().
+                port(alicePort).
+                body(data).
+                contentType(ContentType.JSON).
+//
+        when().
+                post("/api/v1/wallet/withdraw").
+//
+        then().
+                statusCode(204);
+
+        ApiTestHelper.waitForP2PMsgPropagation();
+        assertEquals(50000000, ApiTestHelper.getBalance(alicePort).availableBalance);
+        ApiTestHelper.generateBlocks(bitcoin, 1);
+        assertEquals(.5, getAccountBalanceByAddress(bitcoin, emptyMinerAddress), .01);
+    }
+
+    @InSequence(8)
+    @Test
+    public void withdrawFunds_invalidAddressEntries_returns204() throws Exception {
+        // sets up a trade
+        tradeResourceIT.setupTrade();
         final int alicePort = getAlicePort();
 
         emptyMinerAddress = createNewAccountAndAddress();
