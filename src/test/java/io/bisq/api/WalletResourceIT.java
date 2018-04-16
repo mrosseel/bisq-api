@@ -21,21 +21,20 @@ import static org.junit.Assert.assertEquals;
 public class WalletResourceIT {
 
     @DockerContainer
-    private Container alice = ContainerFactory.createApiContainer("alice", "8081->8080", 3333, false, true);
+    Container alice;
 
     @DockerContainer
-    private Container bitcoin = ContainerFactory.createBitcoinContainer();
-
-    // containers below are needed for trade testing
-    @DockerContainer
-    private Container bob;
+    Container bob;
 
     @DockerContainer
-    private Container arbitrator;
+    Container arbitrator;
 
     @SuppressWarnings("unused")
+    @DockerContainer(order = 4)
+    Container seedNode;
+
     @DockerContainer
-    private Container seedNode;
+    Container bitcoin;
 
     private static String emptyMinerAddress;
     private static String addressWithFunds1;
@@ -57,7 +56,8 @@ public class WalletResourceIT {
 
     @InSequence
     @Test
-    public void waitForAllServicesToBeReady() throws InterruptedException {
+    public void waitForAllServicesToBeReady() throws Exception {
+        tradeResourceIT.setupTrade();
         ApiTestHelper.waitForAllServicesToBeReady();
     }
 
