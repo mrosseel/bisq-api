@@ -11,6 +11,7 @@ import bisq.core.trade.Trade;
 import io.dropwizard.jersey.validation.ValidationErrorMessage;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.Authorization;
 import io.swagger.util.Json;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.validator.constraints.NotEmpty;
@@ -27,7 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import static io.bisq.api.service.ResourceHelper.toValidationErrorResponse;
 import static java.util.stream.Collectors.toList;
 
-@Api("offers")
+@Api(value = "offers", authorizations = @Authorization(value = "accessToken"))
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
 public class OfferResource {

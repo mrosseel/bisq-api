@@ -6,12 +6,13 @@ import io.bisq.api.model.payment.PaymentAccount;
 import io.bisq.api.model.payment.PaymentAccountHelper;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.Authorization;
 
 import javax.validation.Valid;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 
-@Api("payment-accounts")
+@Api(value = "payment-accounts", authorizations = @Authorization(value = "accessToken"))
 @Produces(MediaType.APPLICATION_JSON)
 public class PaymentAccountResource {
 
@@ -30,7 +31,6 @@ public class PaymentAccountResource {
 
     @ApiOperation(value = "Create payment account", notes = "Inspect models section at the bottom of the page for valid PaymentAccount sub-types schemas")
     @POST
-    @Path("/")
     public PaymentAccount create(@Valid PaymentAccount account) {
         final bisq.core.payment.PaymentAccount paymentAccount = PaymentAccountHelper.toBusinessModel(account);
         return PaymentAccountHelper.toRestModel(bisqProxy.addPaymentAccount(paymentAccount));
@@ -38,7 +38,6 @@ public class PaymentAccountResource {
 
     @ApiOperation("Get existing payment accounts")
     @GET
-    @Path("/")
     public PaymentAccountList find() {
         return bisqProxy.getAccountList();
     }

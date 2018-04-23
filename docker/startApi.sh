@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ "$SKIP_BUILD" != "true" ]; then
+    mvn compile
+fi
+
 IP=`ip -4 -o addr show eth0  | sed 's/.*inet \([0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\).*/\1/'`
 ARGS="--myAddress $IP:${NODE_PORT:-9999}"
 if [ ! -z "$APP_NAME" ]; then
@@ -30,5 +34,5 @@ if [ ! -z "$USE_DEV_PRIVILEGE_KEYS" ]; then
     ARGS="$ARGS --useDevPrivilegeKeys=$USE_DEV_PRIVILEGE_KEYS"
 fi
 
-echo mvn compile exec:java -Dexec.mainClass="io.bisq.api.app.ApiMain" -Dexec.args="$ARGS"
-mvn compile exec:java -Dexec.mainClass="io.bisq.api.app.ApiMain" -Dexec.args="$ARGS"
+echo mvn exec:java -Dexec.mainClass="io.bisq.api.app.ApiMain" -Dexec.args="$ARGS"
+mvn exec:java -Dexec.mainClass="io.bisq.api.app.ApiMain" -Dexec.args="$ARGS"

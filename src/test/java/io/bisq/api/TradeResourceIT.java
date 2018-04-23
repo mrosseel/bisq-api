@@ -35,7 +35,7 @@ public class TradeResourceIT {
     @DockerContainer
     Container bitcoin;
 
-    private OfferResourceIT offerResourceIT = new OfferResourceIT();
+    OfferResourceIT offerResourceIT = new OfferResourceIT();
 
     private static String tradeId;
 

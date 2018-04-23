@@ -1,11 +1,21 @@
 package io.bisq.api.service.v1;
 
 import io.bisq.api.BisqProxy;
-import io.swagger.annotations.Api;
+import io.swagger.annotations.*;
 
 import javax.ws.rs.Path;
 
-@Api
+
+@SwaggerDefinition(
+        securityDefinition = @SecurityDefinition(
+                apiKeyAuthDefinitions = @ApiKeyAuthDefinition(
+                        in = ApiKeyAuthDefinition.ApiKeyLocation.HEADER,
+                        key = "accessToken",
+                        name = "authorization"
+                )
+        )
+)
+@Api(authorizations = @Authorization(value = "accessToken"))
 @Path("/api/v1")
 public class ApiV1 {
 
@@ -18,6 +28,11 @@ public class ApiV1 {
     @Path("arbitrators")
     public ArbitratorResource getArbitratorResource() {
         return new ArbitratorResource(bisqProxy);
+    }
+
+    @Path("closed-tradables")
+    public ClosedTradableResource getClosedTradableResource() {
+        return new ClosedTradableResource(bisqProxy);
     }
 
     @Path("currencies")
@@ -53,6 +68,16 @@ public class ApiV1 {
     @Path("trades")
     public TradeResource getTradeResource() {
         return new TradeResource(bisqProxy);
+    }
+
+    @Path("user")
+    public UserResource getUserResource() {
+        return new UserResource(bisqProxy);
+    }
+
+    @Path("version")
+    public VersionResource getVersionResource() {
+        return new VersionResource(bisqProxy);
     }
 
     @Path("wallet")

@@ -6,17 +6,16 @@ import io.bisq.api.exceptions.*;
 import io.bisq.api.model.*;
 import io.bisq.api.model.payment.PaymentAccountHelper;
 import bisq.common.app.DevEnv;
+import bisq.common.app.Version;
 import bisq.common.crypto.KeyRing;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
+import bisq.common.util.Tuple2;
 import bisq.core.app.BisqEnvironment;
 import bisq.core.arbitration.Arbitrator;
 import bisq.core.arbitration.ArbitratorManager;
 import bisq.core.btc.*;
-import bisq.core.btc.wallet.BsqWalletService;
-import bisq.core.btc.wallet.BtcWalletService;
-import bisq.core.btc.wallet.WalletService;
-import bisq.core.btc.wallet.WalletsSetup;
+import bisq.core.btc.wallet.*;
 import bisq.core.locale.*;
 import bisq.core.offer.*;
 import bisq.core.payment.AccountAgeWitnessService;
@@ -24,10 +23,7 @@ import bisq.core.payment.CryptoCurrencyAccount;
 import bisq.core.payment.PaymentAccount;
 import bisq.core.payment.validation.AltCoinAddressValidator;
 import bisq.core.provider.fee.FeeService;
-import bisq.core.trade.BuyerAsMakerTrade;
-import bisq.core.trade.SellerAsMakerTrade;
-import bisq.core.trade.Trade;
-import bisq.core.trade.TradeManager;
+import bisq.core.trade.*;
 import bisq.core.trade.closed.ClosedTradableManager;
 import bisq.core.trade.failed.FailedTradesManager;
 import bisq.core.trade.protocol.*;
@@ -43,12 +39,15 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.inject.Injector;
 import io.bisq.api.model.*;
 import io.bisq.api.model.payment.PaymentAccountHelper;
+import io.bisq.api.service.TokenRegistry;
 import javafx.collections.ObservableList;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.bitcoinj.core.*;
+import org.bitcoinj.crypto.KeyCrypterScrypt;
 import org.bitcoinj.wallet.Wallet;
 import org.jetbrains.annotations.NotNull;
+import org.spongycastle.crypto.params.KeyParameter;
 
 import javax.annotation.Nullable;
 import javax.validation.ValidationException;
@@ -64,10 +63,10 @@ import static java.util.stream.Collectors.toList;
 
 /**
  * This class is a proxy for all bitsquare features the model will use.
- * <p/>
+ * <p>
  * No methods/representations used in the interface layers (REST/Socket/...) should be used in this class.
  * => this should be the common gateway to bisq used by all outward-facing API classes.
- * <p/>
+ * <p>
  * If the bisq code is refactored correctly, this class could become very light.
  */
 @Slf4j
@@ -374,6 +373,14 @@ public class BisqProxy {
         final ObservableList<Trade> tradableList = tradeManager.getTradableList();
         if (null != tradableList) return tradableList.sorted();
         return Collections.emptyList();
+    }
+
+    public List<ClosedTradableDetails> getClosedTradableList() {
+        final ClosedTradableConverter closedTradableConverter = injector.getInstance(ClosedTradableConverter.class);
+        return closedTradableManager.getClosedTradables().stream()
+                .sorted((o1, o2) -> o2.getDate().compareTo(o1.getDate()))
+                .map(closedTradableConverter::convert)
+                .collect(toList());
     }
 
     public Trade getTrade(String tradeId) {
@@ -876,6 +883,65 @@ public class BisqProxy {
             preferences.setWithdrawalTxFeeInBytes(update.withdrawalTxFee);
         }
         return getPreferences();
+    }
+
+    public VersionDetails getVersionDetails() {
+        final VersionDetails versionDetails = new VersionDetails();
+        versionDetails.application = Version.VERSION;
+        versionDetails.network = Version.P2P_NETWORK_VERSION;
+        versionDetails.p2PMessage = Version.getP2PMessageVersion();
+        versionDetails.localDB = Version.LOCAL_DB_VERSION;
+        versionDetails.tradeProtocol = Version.TRADE_PROTOCOL_VERSION;
+        return versionDetails;
+    }
+
+    public AuthResult authenticate(String password) {
+        final TokenRegistry tokenRegistry = injector.getInstance(TokenRegistry.class);
+        final boolean isPasswordValid = btcWalletService.isWalletReady() && btcWalletService.isEncrypted() && isWalletPasswordValid(password);
+        if (isPasswordValid) {
+            return new AuthResult(tokenRegistry.generateToken());
+        }
+        throw new UnauthorizedException();
+    }
+
+    private boolean isWalletPasswordValid(String password) {
+        final KeyParameter aesKey = getAESKey(password);
+        return isWalletPasswordValid(aesKey);
+    }
+
+    private boolean isWalletPasswordValid(KeyParameter aesKey) {
+        final WalletsManager walletsManager = injector.getInstance(WalletsManager.class);
+        return null != aesKey && walletsManager.checkAESKey(aesKey);
+    }
+
+    private KeyParameter getAESKey(String password) {
+        return getAESKeyAndScrypt(password).first;
+    }
+
+    private Tuple2<KeyParameter, KeyCrypterScrypt> getAESKeyAndScrypt(String password) {
+        final WalletsManager walletsManager = injector.getInstance(WalletsManager.class);
+        final KeyCrypterScrypt keyCrypterScrypt = walletsManager.getKeyCrypterScrypt();
+        return new Tuple2<>(keyCrypterScrypt.deriveKey(password), keyCrypterScrypt);
+    }
+
+    public AuthResult changePassword(String oldPassword, String newPassword) {
+        if (!btcWalletService.isWalletReady())
+            throw new WalletNotReadyException("Wallet not ready yet");
+        final WalletsManager walletsManager = injector.getInstance(WalletsManager.class);
+        if (btcWalletService.isEncrypted()) {
+            final KeyParameter aesKey = null == oldPassword ? null : getAESKey(oldPassword);
+            if (!isWalletPasswordValid(aesKey))
+                throw new UnauthorizedException();
+            walletsManager.decryptWallets(aesKey);
+        }
+        if (null != newPassword && newPassword.length() > 0) {
+            final Tuple2<KeyParameter, KeyCrypterScrypt> aesKeyAndScrypt = getAESKeyAndScrypt(newPassword);
+            walletsManager.encryptWallets(aesKeyAndScrypt.second, aesKeyAndScrypt.first);
+            final TokenRegistry tokenRegistry = injector.getInstance(TokenRegistry.class);
+            tokenRegistry.clear();
+            return new AuthResult(tokenRegistry.generateToken());
+        }
+        return null;
     }
 
     public enum WalletAddressPurpose {
