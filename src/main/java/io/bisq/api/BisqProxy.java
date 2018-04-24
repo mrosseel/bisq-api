@@ -1,10 +1,5 @@
 package io.bisq.api;
 
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.inject.Injector;
-import io.bisq.api.exceptions.*;
-import io.bisq.api.model.*;
-import io.bisq.api.model.payment.PaymentAccountHelper;
 import bisq.common.app.DevEnv;
 import bisq.common.app.Version;
 import bisq.common.crypto.KeyRing;
@@ -23,7 +18,12 @@ import bisq.core.payment.CryptoCurrencyAccount;
 import bisq.core.payment.PaymentAccount;
 import bisq.core.payment.validation.AltCoinAddressValidator;
 import bisq.core.provider.fee.FeeService;
-import bisq.core.trade.*;
+import bisq.core.provider.price.MarketPrice;
+import bisq.core.provider.price.PriceFeedService;
+import bisq.core.trade.BuyerAsMakerTrade;
+import bisq.core.trade.SellerAsMakerTrade;
+import bisq.core.trade.Trade;
+import bisq.core.trade.TradeManager;
 import bisq.core.trade.closed.ClosedTradableManager;
 import bisq.core.trade.failed.FailedTradesManager;
 import bisq.core.trade.protocol.*;
@@ -35,6 +35,12 @@ import bisq.desktop.util.validation.BtcAddressValidator;
 import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.P2PService;
 import bisq.network.p2p.network.Statistic;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.inject.Injector;
+import io.bisq.api.exceptions.*;
+import io.bisq.api.exceptions.InsufficientMoneyException;
+import io.bisq.api.model.*;
+import io.bisq.api.model.payment.PaymentAccountHelper;
 import io.bisq.api.service.TokenRegistry;
 import javafx.collections.ObservableList;
 import lombok.Getter;
@@ -249,9 +255,11 @@ public class BisqProxy {
                 fundUsingBisqWallet,
                 transaction -> futureResult.complete(offer),
                 error -> {
-                    if (error.contains("Insufficient money")) {
-                        futureResult.completeExceptionally(new io.bisq.api.exceptions.InsufficientMoneyException(error));
-                    } else
+                    if (error.contains("Insufficient money"))
+                        futureResult.completeExceptionally(new InsufficientMoneyException(error));
+                    else if (error.contains("Amount is larger"))
+                        futureResult.completeExceptionally(new AmountTooHighException(error));
+                    else
                         futureResult.completeExceptionally(new RuntimeException(error));
                 });
 
@@ -273,6 +281,10 @@ public class BisqProxy {
             offer = getOffer(offerId);
         } catch (NotFoundException e) {
             return failFuture(futureResult, e);
+        }
+
+        if (offer.getMakerNodeAddress().equals(p2PService.getAddress())) {
+            return failFuture(futureResult, new OfferTakerSameAsMakerException("Taker's address same as maker's"));
         }
 
         // check the paymentAccountId is valid
@@ -938,6 +950,25 @@ public class BisqProxy {
             return new AuthResult(tokenRegistry.generateToken());
         }
         return null;
+    }
+
+    public PriceFeed getPriceFeed(String[] codes) {
+        final PriceFeedService priceFeedService = injector.getInstance(PriceFeedService.class);
+        final List<FiatCurrency> fiatCurrencies = preferences.getFiatCurrencies();
+        final List<CryptoCurrency> cryptoCurrencies = preferences.getCryptoCurrencies();
+        final Stream<String> codesStream;
+        if (null == codes || 0 == codes.length)
+            codesStream = Stream.concat(fiatCurrencies.stream(), cryptoCurrencies.stream()).map(TradeCurrency::getCode);
+        else
+            codesStream = Arrays.asList(codes).stream();
+        final List<MarketPrice> marketPrices = codesStream
+                .map(priceFeedService::getMarketPrice)
+                .filter(i -> null != i)
+                .collect(toList());
+        final PriceFeed priceFeed = new PriceFeed();
+        for (MarketPrice price : marketPrices)
+            priceFeed.prices.put(price.getCurrencyCode(), price.getPrice());
+        return priceFeed;
     }
 
     public enum WalletAddressPurpose {

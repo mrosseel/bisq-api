@@ -109,6 +109,8 @@ public class OfferResource {
                         responseBuilder = toValidationErrorResponse(cause, 424);
                     } else if (cause instanceof PaymentAccountNotFoundException) {
                         responseBuilder = toValidationErrorResponse(cause, 425);
+                    } else if (cause instanceof AmountTooHighException) {
+                        responseBuilder = toValidationErrorResponse(cause, 426);
                     } else if (cause instanceof InsufficientMoneyException) {
                         responseBuilder = toValidationErrorResponse(cause, 427);
                     } else {
@@ -143,6 +145,8 @@ public class OfferResource {
                         responseBuilder = toValidationErrorResponse(cause, 425);
                     } else if (cause instanceof InsufficientMoneyException) {
                         responseBuilder = toValidationErrorResponse(cause, 427);
+                    } else if (cause instanceof OfferTakerSameAsMakerException) {
+                        responseBuilder = toValidationErrorResponse(cause, 428);
                     } else if (cause instanceof NotFoundException) {
                         responseBuilder = toValidationErrorResponse(cause, 404);
                     } else {
