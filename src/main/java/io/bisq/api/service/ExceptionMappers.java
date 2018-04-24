@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
 import com.google.common.collect.ImmutableList;
 import io.bisq.api.exceptions.NotFoundException;
 import io.bisq.api.exceptions.WalletNotReadyException;
-import io.bisq.api.UnauthorizedException;
+import io.bisq.api.exceptions.UnauthorizedException;
 import io.dropwizard.jersey.setup.JerseyEnvironment;
 import io.dropwizard.jersey.validation.ValidationErrorMessage;
 
