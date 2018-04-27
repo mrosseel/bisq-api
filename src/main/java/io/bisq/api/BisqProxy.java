@@ -56,6 +56,7 @@ import javax.validation.ValidationException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -541,7 +542,7 @@ public class BisqProxy {
     public void withdrawFunds(Set<String> sourceAddresses, Coin amountAsCoin, boolean feeExcluded, String targetAddress)
             throws AddressEntryException, InsufficientFundsException, AmountTooLowException {
         // get all address entries
-        final Stream<AddressEntry> addressEntryStream = sourceAddresses.stream()
+        final Supplier<Stream<AddressEntry>> addressEntryStreamSupplier = () -> sourceAddresses.stream()
                 .filter(address -> null != address)
                 .map(address -> btcWalletService.getAddressEntryListAsImmutableList().stream().filter(addressEntry -> address.equals(addressEntry.getAddressString())).findFirst().orElse(null))
                 .filter(item -> null != item);
@@ -551,9 +552,9 @@ public class BisqProxy {
                     || AddressEntry.Context.TRADE_PAYOUT.equals(addressEntry.getContext()));
         };
         // check if there are any unauthorized address types
-        if (addressEntryStream.anyMatch(filterNotAllowedAddressEntries)) {
+        if (addressEntryStreamSupplier.get().anyMatch(filterNotAllowedAddressEntries)) {
             throw new AddressEntryException("Only addresses with context AVAILABLE and TRADE_PAYOUT can be used:"
-                    + addressEntryStream.filter(filterNotAllowedAddressEntries).map(addressEntry -> addressEntry.getAddressString()).collect(Collectors.joining(", ")));
+                    + addressEntryStreamSupplier.get().filter(filterNotAllowedAddressEntries).map(addressEntry -> addressEntry.getAddressString()).collect(Collectors.joining(", ")));
         }
 
         Coin sendersAmount;
@@ -576,7 +577,7 @@ public class BisqProxy {
         sendersAmount = feeExcluded ? amountAsCoin.add(fee) : amountAsCoin;
         Coin receiverAmount = feeExcluded ? amountAsCoin : amountAsCoin.subtract(fee);
 
-        final Coin totalAvailableAmountOfSelectedItems = addressEntryStream
+        final Coin totalAvailableAmountOfSelectedItems = addressEntryStreamSupplier.get()
                 .map(address -> btcWalletService.getBalanceForAddress(address.getAddress()))
                 .reduce(Coin.ZERO, Coin::add);
 

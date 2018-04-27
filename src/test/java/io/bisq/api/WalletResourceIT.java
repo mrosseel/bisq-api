@@ -1,7 +1,13 @@
 package io.bisq.api;
 
+import bisq.core.btc.AddressEntry;
+import io.bisq.api.model.WalletAddress;
+import io.bisq.api.model.WalletAddressList;
+import io.bisq.api.model.WalletDetails;
 import io.bisq.api.model.WithdrawFundsForm;
 import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import io.restassured.response.ValidatableResponse;
 import org.arquillian.cube.docker.impl.client.containerobject.dsl.Container;
 import org.arquillian.cube.docker.impl.client.containerobject.dsl.DockerContainer;
 import org.arquillian.cube.spi.CubeOutput;
@@ -12,10 +18,12 @@ import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Optional;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.isA;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 @RunWith(Arquillian.class)
 public class WalletResourceIT {
@@ -43,8 +51,6 @@ public class WalletResourceIT {
 
     private TradeResourceIT tradeResourceIT = new TradeResourceIT();
 
-    private static String tradeId;
-
     {
         alice = tradeResourceIT.alice;
         bob = tradeResourceIT.bob;
@@ -57,7 +63,7 @@ public class WalletResourceIT {
     @InSequence
     @Test
     public void waitForAllServicesToBeReady() throws Exception {
-        tradeResourceIT.setupTrade();
+        //tradeResourceIT.setupTrade();
         ApiTestHelper.waitForAllServicesToBeReady();
     }
 
@@ -248,37 +254,89 @@ public class WalletResourceIT {
 
     @InSequence(8)
     @Test
-    public void withdrawFunds_invalidAddressEntries_returns204() throws Exception {
+    public void withdrawFunds_invalidAddressEntries_returns423() throws Exception {
         // sets up a trade
         tradeResourceIT.setupTrade();
         final int alicePort = getAlicePort();
+        WalletDetails details = ApiTestHelper.getBalance(alicePort);
+        System.out.println(details.availableBalance + ", " + details.lockedBalance + ", " + details.reservedBalance);
+        WalletAddressList addresses = ApiTestHelper.getAddresses(alicePort);
+        System.out.println(Arrays.toString(addresses.walletAddresses.toArray()));
+        Optional<WalletAddress> any = addresses.walletAddresses.stream().filter(walletAddress -> walletAddress.balance > 0)
+                .filter(walletAddress -> !walletAddress.context.equals(AddressEntry.Context.AVAILABLE))
+                .filter(walletAddress -> !walletAddress.context.equals(AddressEntry.Context.TRADE_PAYOUT)).findAny();
+        if (!any.isPresent())
+            fail();
 
         emptyMinerAddress = createNewAccountAndAddress();
         fundAliceWallet();
 
         final WithdrawFundsForm data = new WithdrawFundsForm();
-        data.amount = 50000000;
+        data.amount = 100000;
         data.feeExcluded = true;
-        data.sourceAddresses = Arrays.asList(addressWithFunds1, addressWithFunds2, addressWithFunds3);
+        data.sourceAddresses = Arrays.asList(any.get().address);
         data.targetAddress = emptyMinerAddress;
+        System.out.println("sourceadders = "+data.sourceAddresses);
 
-        given().
+        ValidatableResponse response = given().
                 port(alicePort).
                 body(data).
                 contentType(ContentType.JSON).
 //
         when().
-                post("/api/v1/wallet/withdraw").
+                        post("/api/v1/wallet/withdraw").
 //
         then().
-                statusCode(204);
+                        statusCode(423);
+    }
+
+    /*
+    @InSequence(8)
+    @Test
+    public void withdrawFunds_invalidAddressEntries_returns423() throws Exception {
+        // sets up a trade
+        tradeResourceIT.setupTrade();
+        final int alicePort = getAlicePort();
+        WalletDetails details = ApiTestHelper.getBalance(alicePort);
+        System.out.println(details.availableBalance + ", " + details.lockedBalance + ", " + details.reservedBalance);
+        WalletAddressList addresses = ApiTestHelper.getAddresses(alicePort);
+        System.out.println(Arrays.toString(addresses.walletAddresses.toArray()));
+        Optional<WalletAddress> any = addresses.walletAddresses.stream().filter(walletAddress -> walletAddress.balance > 0)
+                .filter(walletAddress -> !walletAddress.context.equals(AddressEntry.Context.AVAILABLE))
+                .filter(walletAddress -> !walletAddress.context.equals(AddressEntry.Context.TRADE_PAYOUT)).findAny();
+        if (!any.isPresent())
+            fail();
+
+        emptyMinerAddress = createNewAccountAndAddress();
+        fundAliceWallet();
+
+        final WithdrawFundsForm data = new WithdrawFundsForm();
+        data.amount = 100000;
+        data.feeExcluded = true;
+        data.sourceAddresses = Arrays.asList(any.get().address);
+        data.targetAddress = emptyMinerAddress;
+        System.out.println("sourceadders = "+data.sourceAddresses);
+
+        ValidatableResponse response = given().
+                port(alicePort).
+                body(data).
+                contentType(ContentType.JSON).
+//
+        when().
+                        post("/api/v1/wallet/withdraw").
+//
+        then().
+                        statusCode(423);
+        System.out.println(response);
 
         ApiTestHelper.waitForP2PMsgPropagation();
-        assertEquals(50000000, ApiTestHelper.getBalance(alicePort).availableBalance);
+        details = ApiTestHelper.getBalance(alicePort);
+        System.out.println(details.availableBalance + ", " + details.lockedBalance + ", " + details.reservedBalance);
+        assertEquals(199852044, ApiTestHelper.getBalance(alicePort).availableBalance);
         ApiTestHelper.generateBlocks(bitcoin, 1);
         assertEquals(.5, getAccountBalanceByAddress(bitcoin, emptyMinerAddress), .01);
     }
-
+*/
     private double getAccountBalanceByAddress(Container bitcoin, String address) {
         CubeOutput cubeOutput = bitcoin.exec("bitcoin-cli", "-regtest", "getaccount", address);
         assertEquals("Command 'getnewaddress' should succeed", "", cubeOutput.getError());

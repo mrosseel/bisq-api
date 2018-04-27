@@ -1,14 +1,11 @@
 package io.bisq.api;
 
-import com.github.javafaker.Faker;
-import io.bisq.api.model.ArbitratorList;
-import io.bisq.api.model.OfferDetail;
-import io.bisq.api.model.P2PNetworkStatus;
-import io.bisq.api.model.WalletDetails;
-import io.bisq.api.model.payment.PaymentAccount;
-import io.bisq.api.model.payment.SepaPaymentAccount;
 import bisq.core.locale.CountryUtil;
 import bisq.core.payment.payload.PaymentMethod;
+import com.github.javafaker.Faker;
+import io.bisq.api.model.*;
+import io.bisq.api.model.payment.PaymentAccount;
+import io.bisq.api.model.payment.SepaPaymentAccount;
 import io.restassured.http.ContentType;
 import io.restassured.response.ValidatableResponse;
 import org.arquillian.cube.docker.impl.client.containerobject.dsl.Container;
@@ -64,6 +61,18 @@ public final class ApiTestHelper {
         then().
                         statusCode(200).
                         extract().body().as(WalletDetails.class);
+    }
+
+    public static WalletAddressList getAddresses(int apiPort) {
+        return given().
+                port(apiPort).
+//
+        when().
+                        get("/api/v1/wallet/addresses").
+//
+        then().
+                        statusCode(200).
+                        extract().body().as(WalletAddressList.class);
     }
 
     public static P2PNetworkStatus getP2PNetworkStatus(int apiPort) {

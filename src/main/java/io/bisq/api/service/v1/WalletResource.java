@@ -2,8 +2,8 @@ package io.bisq.api.service.v1;
 
 import bisq.core.btc.AddressEntryException;
 import bisq.core.btc.InsufficientFundsException;
-import io.bisq.api.exceptions.AmountTooLowException;
 import io.bisq.api.BisqProxy;
+import io.bisq.api.exceptions.AmountTooLowException;
 import io.bisq.api.model.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -11,7 +11,6 @@ import io.swagger.annotations.Authorization;
 import org.bitcoinj.core.Coin;
 
 import javax.validation.Valid;
-import javax.validation.ValidationException;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.util.HashSet;
@@ -65,7 +64,7 @@ public class WalletResource {
         try {
             bisqProxy.withdrawFunds(sourceAddresses, amountAsCoin, feeExcluded, targetAddress);
         } catch (AddressEntryException e) {
-            throw new ValidationException(e.getMessage());
+            throw new WebApplicationException(e.getMessage(), 423);
         } catch (InsufficientFundsException e) {
             throw new WebApplicationException(e.getMessage(), 423);
         } catch (AmountTooLowException e) {
