@@ -290,53 +290,6 @@ public class WalletResourceIT {
                         statusCode(423);
     }
 
-    /*
-    @InSequence(8)
-    @Test
-    public void withdrawFunds_invalidAddressEntries_returns423() throws Exception {
-        // sets up a trade
-        tradeResourceIT.setupTrade();
-        final int alicePort = getAlicePort();
-        WalletDetails details = ApiTestHelper.getBalance(alicePort);
-        System.out.println(details.availableBalance + ", " + details.lockedBalance + ", " + details.reservedBalance);
-        WalletAddressList addresses = ApiTestHelper.getAddresses(alicePort);
-        System.out.println(Arrays.toString(addresses.walletAddresses.toArray()));
-        Optional<WalletAddress> any = addresses.walletAddresses.stream().filter(walletAddress -> walletAddress.balance > 0)
-                .filter(walletAddress -> !walletAddress.context.equals(AddressEntry.Context.AVAILABLE))
-                .filter(walletAddress -> !walletAddress.context.equals(AddressEntry.Context.TRADE_PAYOUT)).findAny();
-        if (!any.isPresent())
-            fail();
-
-        emptyMinerAddress = createNewAccountAndAddress();
-        fundAliceWallet();
-
-        final WithdrawFundsForm data = new WithdrawFundsForm();
-        data.amount = 100000;
-        data.feeExcluded = true;
-        data.sourceAddresses = Arrays.asList(any.get().address);
-        data.targetAddress = emptyMinerAddress;
-        System.out.println("sourceadders = "+data.sourceAddresses);
-
-        ValidatableResponse response = given().
-                port(alicePort).
-                body(data).
-                contentType(ContentType.JSON).
-//
-        when().
-                        post("/api/v1/wallet/withdraw").
-//
-        then().
-                        statusCode(423);
-        System.out.println(response);
-
-        ApiTestHelper.waitForP2PMsgPropagation();
-        details = ApiTestHelper.getBalance(alicePort);
-        System.out.println(details.availableBalance + ", " + details.lockedBalance + ", " + details.reservedBalance);
-        assertEquals(199852044, ApiTestHelper.getBalance(alicePort).availableBalance);
-        ApiTestHelper.generateBlocks(bitcoin, 1);
-        assertEquals(.5, getAccountBalanceByAddress(bitcoin, emptyMinerAddress), .01);
-    }
-*/
     private double getAccountBalanceByAddress(Container bitcoin, String address) {
         CubeOutput cubeOutput = bitcoin.exec("bitcoin-cli", "-regtest", "getaccount", address);
         assertEquals("Command 'getnewaddress' should succeed", "", cubeOutput.getError());
