@@ -1,20 +1,28 @@
 package network.bisq.api.service.v1;
 
+import java.util.Collection;
+import java.util.stream.Collectors;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.Authorization;
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import network.bisq.api.BisqProxy;
 import network.bisq.api.model.Arbitrator;
 import network.bisq.api.model.ArbitratorList;
 import network.bisq.api.model.ArbitratorRegistration;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.Authorization;
 import org.hibernate.validator.constraints.NotBlank;
-
-import javax.validation.Valid;
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import java.util.Collection;
-import java.util.stream.Collectors;
 
 @Api(value = "arbitrators", authorizations = @Authorization(value = "accessToken"))
 @Produces(MediaType.APPLICATION_JSON)
@@ -34,7 +42,7 @@ public class ArbitratorResource {
 
     @ApiOperation("Register yourself as arbitrator")
     @POST
-    public void register(@Valid ArbitratorRegistration data) {
+    public void register(@Valid @NotNull ArbitratorRegistration data) {
         bisqProxy.registerArbitrator(data.languageCodes);
     }
 
