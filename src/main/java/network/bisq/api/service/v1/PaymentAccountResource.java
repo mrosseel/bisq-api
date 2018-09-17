@@ -1,5 +1,6 @@
 package network.bisq.api.service.v1;
 
+import javax.validation.constraints.NotNull;
 import network.bisq.api.BisqProxy;
 import network.bisq.api.model.PaymentAccountList;
 import network.bisq.api.model.payment.PaymentAccount;
@@ -29,9 +30,10 @@ public class PaymentAccountResource {
         bisqProxy.removePaymentAccount(id);
     }
 
-    @ApiOperation(value = "Create payment account", notes = "Inspect models section at the bottom of the page for valid PaymentAccount sub-types schemas")
+    @ApiOperation(value = "Create payment account", notes = "Inspect models section at the bottom of the page for " +
+            "valid PaymentAccount sub-types schemas")
     @POST
-    public PaymentAccount create(@Valid PaymentAccount account) {
+    public PaymentAccount create(@Valid @NotNull PaymentAccount account) {
         final bisq.core.payment.PaymentAccount paymentAccount = PaymentAccountHelper.toBusinessModel(account);
         return PaymentAccountHelper.toRestModel(bisqProxy.addPaymentAccount(paymentAccount));
     }

@@ -1,5 +1,6 @@
 package network.bisq.api.service.v1;
 
+import javax.validation.constraints.NotNull;
 import network.bisq.api.BisqProxy;
 import network.bisq.api.model.AuthForm;
 import network.bisq.api.model.AuthResult;
@@ -27,7 +28,7 @@ public class UserResource {
     @ApiOperation("Exchange password for access token")
     @POST
     @Path("/authenticate")
-    public AuthResult authenticate(@Valid AuthForm authForm) {
+    public AuthResult authenticate(@Valid @NotNull AuthForm authForm) {
         return bisqProxy.authenticate(authForm.password);
     }
 
@@ -35,7 +36,7 @@ public class UserResource {
     @ApiOperation("Change password")
     @POST
     @Path("/password")
-    public AuthResult changePassword(@Valid ChangePassword data) {
+    public AuthResult changePassword(@Valid @NotNull ChangePassword data) {
         return bisqProxy.changePassword(data.oldPassword, data.newPassword);
     }
 

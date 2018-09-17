@@ -1,5 +1,6 @@
 package network.bisq.api.service.v1;
 
+import javax.validation.constraints.NotNull;
 import network.bisq.api.BisqProxy;
 import network.bisq.api.model.Preferences;
 import network.bisq.api.model.PreferencesAvailableValues;
@@ -32,7 +33,7 @@ public class PreferencesResource {
 
     @ApiOperation(value = "Set preferences", notes = "Supports partial update")
     @PUT
-    public Preferences setPreferences(@Valid Preferences preferences) {
+    public Preferences setPreferences(@Valid @NotNull Preferences preferences) {
         return bisqProxy.setPreferences(preferences);
     }
 
